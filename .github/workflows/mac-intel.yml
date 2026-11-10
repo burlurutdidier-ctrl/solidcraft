@@ -1,0 +1,35 @@
+# Test build for an Intel Mac: the app (x86_64 only, ad-hoc signed, not notarized) as a .dmg
+# artifact. Runs on every push to the mac-intel-patch branch, or by hand from the Actions tab.
+name: Mac Intel test build
+
+on:
+  push:
+    branches: [mac-intel-patch]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  macos-x86_64:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: mac-intel-x86_64
+      - name: Build and package (dmg, mounted and checked by the script)
+        run: packaging/macos/package.sh --arch x86_64
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: solidcraft-macos-x86_64-vega-patch
+          path: dist/release/*.dmg
+          if-no-files-found: error
