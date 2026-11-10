@@ -94,6 +94,14 @@ system then resets the GPU. SolidCraft already builds bodies on the CPU on the A
 D300/D500/D700 (Mac Pro 2013). On another GPU that does this, start SolidCraft with
 `SOLIDCRAFT_CPU_TESS=1` set to build bodies on the CPU, and open an issue with the GPU's name.
 
+## Bodies show inverted edges or misplaced lines after Extrude or Revolve
+
+Some graphics drivers run the shader SolidCraft uses to build bodies on the GPU but return
+wrong bodies: edges come out inverted and profile lines sit away from the body. SolidCraft
+already builds bodies on the CPU on the AMD Radeon Vega under Metal (Intel Macs). On another
+GPU that does this, start SolidCraft with `SOLIDCRAFT_CPU_TESS=1` set to build bodies on the
+CPU, and open an issue with the GPU's name.
+
 ## The interface looks blurry on Linux with display scaling
 
 On Linux, SolidCraft runs through XWayland whenever an X display is available, because file

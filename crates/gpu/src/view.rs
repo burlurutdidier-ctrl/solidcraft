@@ -3204,7 +3204,7 @@ pub fn tessellation(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu
         return None;
     }
     let info = adapter.get_info();
-    if hangs_on_gpu_tessellation(info.backend, &info.name) || std::env::var_os("SOLIDCRAFT_CPU_TESS").is_some() {
+    if hangs_on_gpu_tessellation(info.backend, &info.name) || miscomputes_gpu_tessellation(info.backend, &info.name) || std::env::var_os("SOLIDCRAFT_CPU_TESS").is_some() {
         log::warn!("bodies are built on the CPU on {} ({:?})", info.name, info.backend);
         return None;
     }
@@ -3277,6 +3277,13 @@ impl Drop for TessLater {
 /// and the whole desktop freezes. `SOLIDCRAFT_CPU_TESS=1` forces CPU evaluation on any device.
 pub fn hangs_on_gpu_tessellation(backend: wgpu::Backend, name: &str) -> bool {
     backend == wgpu::Backend::Metal && name.contains("FirePro")
+}
+
+/// A device whose driver runs the evaluation shader but returns wrong bodies, so bodies are built
+/// on the CPU there: the AMD Radeon Vega (RX Vega 56 on an Intel Mac) under Metal, where an
+/// extruded or revolved body comes out with inverted edges and misplaced profile lines (#14179).
+pub fn miscomputes_gpu_tessellation(backend: wgpu::Backend, name: &str) -> bool {
+    backend == wgpu::Backend::Metal && name.contains("Vega")
 }
 
 /// Whether [`Renderer::prepare`] may blit the picture it drew last instead of drawing the frame
@@ -4318,6 +4325,18 @@ mod tests {
         assert!(!super::hangs_on_gpu_tessellation(wgpu::Backend::Metal, "Apple M2"));
         assert!(!super::hangs_on_gpu_tessellation(wgpu::Backend::Metal, "AMD Radeon Pro 560X"));
         assert!(!super::hangs_on_gpu_tessellation(wgpu::Backend::Vulkan, "AMD FirePro W5100"));
+    }
+
+    /// The Radeon Vega under Metal skips GPU evaluation, which builds wrong bodies there (#14179);
+    /// the same card under another backend and other Metal GPUs keep it.
+    #[test]
+    fn radeon_vega_under_metal_builds_bodies_on_the_cpu() {
+        assert!(super::miscomputes_gpu_tessellation(wgpu::Backend::Metal, "AMD Radeon RX Vega 56"));
+        assert!(super::miscomputes_gpu_tessellation(wgpu::Backend::Metal, "AMD Radeon Pro Vega 64"));
+        assert!(!super::miscomputes_gpu_tessellation(wgpu::Backend::Metal, "Apple M2"));
+        assert!(!super::miscomputes_gpu_tessellation(wgpu::Backend::Metal, "AMD Radeon Pro 560X"));
+        assert!(!super::miscomputes_gpu_tessellation(wgpu::Backend::Metal, "AMD FirePro D500"));
+        assert!(!super::miscomputes_gpu_tessellation(wgpu::Backend::Vulkan, "AMD Radeon RX Vega 56"));
     }
 
     /// The plan evaluation compiled beside the window reaches the renderer once it is ready; one
